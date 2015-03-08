@@ -49,6 +49,6 @@ This is only a demo. Some of the limitations that prevent this from being produc
 * MongoDB - runs "embedded" as part of the Gradle build, allowing for a standalone demo.
 
 ## Usage
-To run the server use:
+To run the server on a machine with Java installed use:
 
 	./gradlew run
