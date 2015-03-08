@@ -1,0 +1,61 @@
+apply plugin: 'application'
+apply plugin: 'findbugs'
+apply plugin: 'java'
+apply plugin: 'mongo'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+version = '1.0'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        // Run embedded MongoDB with Gradle
+        classpath 'com.sourcemuse.gradle.plugin:gradle-mongo-plugin:0.5.0'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Web server + Spring MVC
+    compile "org.springframework.boot:spring-boot-starter-web:1.2.2.RELEASE"
+
+    // MongoDB
+    compile 'com.sourcemuse.gradle.plugin:gradle-mongo-plugin:0.5.0'
+    compile 'org.springframework.data:spring-data-mongodb:1.6.2.RELEASE'
+    compile 'javax.persistence:persistence-api:1.0'
+
+    // General utilities
+    compile 'com.google.guava:guava:18.0'
+
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.springframework.boot:spring-boot-starter-test:1.2.2.RELEASE'
+    testCompile 'com.jayway.restassured:rest-assured:2.4.0'
+}
+
+mainClassName = 'com.stephen_rosenthal.Main'
+run {
+    dependsOn startManagedMongoDb
+}
+
+test {
+    dependsOn startManagedMongoDb
+    testLogging.showStandardStreams = true
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.0'
+}
