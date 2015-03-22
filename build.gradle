@@ -1,7 +1,8 @@
 apply plugin: 'application'
-apply plugin: 'findbugs'
+apply plugin: 'findbugs' // Static analysis
 apply plugin: 'java'
-apply plugin: 'mongo'
+apply plugin: 'jacoco' // Code coverage
+apply plugin: 'mongo' // Persistence
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -13,7 +14,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Run embedded MongoDB with Gradle
+        // Run embedded MongoDB with Gradle, only used for tests
         classpath 'com.sourcemuse.gradle.plugin:gradle-mongo-plugin:0.5.0'
     }
 }
@@ -41,18 +42,48 @@ dependencies {
 
 mainClassName = 'com.stephen_rosenthal.Main'
 run {
-    dependsOn startManagedMongoDb
+    // Properties for the MongoDB connection; change them to point to a different database
+    applicationDefaultJvmArgs = [
+            '-DmongoHostName=localhost',
+            '-DmongoPort=27017',
+            '-DmongoDatabaseName=test'
+    ]
+}
+
+// For unit tests, run a local MongoDB on a random port
+mongo {
+    port 'RANDOM'
 }
 
 test {
     dependsOn startManagedMongoDb
+    systemProperty 'mongoHostName', 'localhost'
+    systemProperty 'mongoPort', project.mongo.port
+    systemProperty 'mongoDatabaseName', 'test'
+
     testLogging.showStandardStreams = true
+    reports {
+        html.enabled = true
+    }
+}
+
+// Static analysis
+findbugs {
+    toolVersion = '3.0.0'
+    sourceSets = [sourceSets.main]
 }
 
 tasks.withType(FindBugs) {
     reports {
         xml.enabled = false
         html.enabled = true
+    }
+}
+
+// Coverage
+jacocoTestReport {
+    reports {
+        html.enabled true
     }
 }
 

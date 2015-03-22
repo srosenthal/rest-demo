@@ -1,7 +1,9 @@
 package com.stephen_rosenthal;
 
-import com.google.common.collect.Lists;
+import com.google.common.base.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -14,8 +16,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * REST API for managing customers
@@ -23,6 +23,9 @@ import java.util.List;
 @Controller
 @RequestMapping("/customers")
 public class CustomersController {
+
+    // Default (max) size for List requests
+    private static final int DEFAULT_PAGE_SIZE = 20;
 
     @Autowired
     private CustomerRepository customerRepository;
@@ -45,30 +48,44 @@ public class CustomersController {
         }
     }
 
-    /** List all of the customers in the database */
+    /**
+     * List all of the customers in the database
+     * @param page (optional) 0-indexed page number.
+     * @param pageSize (optional) number of records in a page.
+     */
     @RequestMapping(method = RequestMethod.GET)
     @ResponseBody
-    public List<Customer> listCustomers() {
-        return Lists.newArrayList(customerRepository.findAll());
+    public CustomerPage listCustomers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        Page<Customer> customers = customerRepository.findAll(getPageable(page, pageSize));
+        return new CustomerPage(customers);
     }
 
-    /** Look up customers that are similar to another, specified by ID */
+    /**
+     * Look up customers that are similar to another, specified by ID
+     * @param likeId (required) the id field for another customer in the database
+     * @param page (optional) 0-indexed page number.
+     * @param pageSize (optional) number of records in a page.
+     */
     @RequestMapping(method = RequestMethod.GET, params = {"likeId"})
     @ResponseBody
-    public ResponseEntity<List<Customer>> listSimilarCustomers(@RequestParam String likeId) {
+    public ResponseEntity<CustomerPage> listSimilarCustomers(
+            @RequestParam String likeId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         Customer otherCustomer = customerRepository.findOne(likeId);
         if (otherCustomer == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        // Iterate over all customers in the database to find matches
-        List<Customer> customers = new ArrayList<>();
-        for (Customer customer : customerRepository.findAll()) {
-            if (DuplicateDetector.areCustomersLikelyDuplicates(customer, otherCustomer)) {
-                customers.add(customer);
-            }
-        }
-        return new ResponseEntity<>(customers, HttpStatus.OK);
+        Page<Customer> customers = customerRepository.findByNormalizedEmailOrFirstNameAndLastNameAllIgnoreCase(
+                otherCustomer.getNormalizedEmail(),
+                otherCustomer.getFirstName(),
+                otherCustomer.getLastName(),
+                getPageable(page, pageSize));
+        CustomerPage customerPage = new CustomerPage(customers);
+        return new ResponseEntity<>(customerPage, HttpStatus.OK);
     }
 
     @RequestMapping(value = "{id}", method = RequestMethod.PUT)
@@ -87,5 +104,22 @@ public class CustomersController {
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+    }
+
+    /**
+     * Build a pagination request, setting default values.
+     * @param page 0-indexed page number. Must be 0 or greater. Invalid values default to DEFAULT_PAGE_SIZE.
+     * @param pageSize Must be in range [1, DEFAULT_PAGE_SIZE]. Invalid values default to DEFAULT_PAGE_SIZE.
+     */
+    private PageRequest getPageable(Integer page, Integer pageSize) {
+        page = Optional.fromNullable(page).or(0);
+        pageSize = Optional.fromNullable(pageSize).or(DEFAULT_PAGE_SIZE);
+        if (page < 0) {
+            page = 0;
+        }
+        if (pageSize < 1 || pageSize > DEFAULT_PAGE_SIZE) {
+            pageSize = DEFAULT_PAGE_SIZE;
+        }
+        return new PageRequest(page, pageSize);
     }
 }

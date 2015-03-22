@@ -15,13 +15,13 @@ Get a specific customer:
 
 	GET /customers/{id}
 
-List all customers in the database:
+List all customers in the database (page and pageSize parameters are optional):
 
-	GET /customers
+	GET /customers?page=0&pageSize=10
 
-List customers that are similar to customer with a given id:
+List customers that are similar to customer with a given id (page and pageSize parameters are optional):
 
-	GET /customers?likeId={id}
+	GET /customers?likeId={id}&page=0&pageSize=10
 
 Create a new customer:
 
@@ -46,9 +46,11 @@ This is only a demo. Some of the limitations that prevent this from being produc
 * Spring MVC - for implementing REST APIs.
 * Spring Boot - sets up Spring without much configuration, and no XML.
 * Spring Data MongoDB - ORM that requires barely any code. 
-* MongoDB - runs "embedded" as part of the Gradle build, allowing for a standalone demo.
+* MongoDB - for persistence.
 
 ## Usage
-To run the server on a machine with Java installed use:
+To run the server:
+ 1. In the build.gradle file under applicationDefaultJvmArgs, set the 'mongoHostName', 'mongoPort', and 'mongoDatabaseName' properties to point to a running MongoDB instance.
+ 2. On a machine with Java installed use the following to start the web server:
 
 	./gradlew run
